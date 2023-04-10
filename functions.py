@@ -1,6 +1,6 @@
 from habit_class import *
-import pickle
-
+import sqlite3
+from tabulate import tabulate
 
 def cls():
     '''function that clears the terminal screen.'''
@@ -26,24 +26,37 @@ def help(interface = 'main'):
         main()
 
     elif interface == 'current habits':
-        print('Enter habit names or habit option number to see details.')
+        print('Enter habit number to see details.')
 
     elif interface == 'add new habit':
         print("type 'add' to add new habit.")
-        print("You will be prompted to enter: \n'title' which is the name of your habit.")
-        print("'description' where you can describe it in detail, you can also leave it empty.")
-        print("'start time' is the time at which your habit completion countdown begins.")
-        print("'end time' where the countdown ends.")
-        print("'type' such as daily, weekly or monthly.\n")
+        print('You will be prompted to enter: \n- "title" which is the name of your habit.')
+        print('- "description" where you can describe it in detail, you can also leave it empty.')
+        print('- "start time" is the time at which your habit completion countdown begins.')
+        print('- "end time" where the countdown ends.')
+        print('- "type" such as daily, weekly or monthly.\n')
         print('To cancel habit entry, leave all fields empty.\n')
 
     elif interface == 'view all habits':
-        print('to go back, type "main"')
-        print('view all habits help')
+        print('to view details of any habit, enter the habit number listed.')
+        print("type 'delete' to delete a habit. this will remove all habit data and performance metrics!")        
+        print('\nto go back, type "main"')
 
     elif interface == 'my progress':
-        print('to go back, type "main"')
         print('my progress help')
+        print('\nto go back, type "main"')
+
+
+def get_data():
+    #define function to retrieve all tables from database
+    connection = sqlite3.connect('habit_db TEST.db')
+    cursor = connection.cursor()
+    cursor.execute('SELECT * FROM habits;')
+    habits_table = cursor.fetchall()
+    cursor.execute('SELECT * FROM task_completion;')
+    task_completion_table = cursor.fetchall()
+    connection.close()
+    return habits_table, task_completion_table
 
 
 def main():
@@ -56,38 +69,36 @@ def main():
 
 
 def current_habits():
-
-    #define function to retrieve data
-    def get_data():
-        import sqlite3
-        connection = sqlite3.connect('habit_db TEST.db')
-        cursor = connection.cursor()
-        cursor.execute('SELECT * FROM habits;')
-        return cursor.fetchall()
-        connection.close()
-        
+    
     #clear screen to show sub-menu interface
     cls()
 
+    #get data from database tables
+    habits_table, task_completion_table = get_data()
+    
     #output sub-menu heading
     print('CURRENT HABITS:\n')
 
     #define loop controlling variable
     count = 0
 
-    #dfine varable to store habit names from get_data()
-    habit_names = []
+    #define list to store some habit attributes from habits_table
+    display_habits = []
 
+    #define list to store habit names for later use
+    habit_names = []
     #extract all attributes of a habit
     #useful for taking the relevant attributes out separately
-    for (id,title,desc,start,end,type,date) in get_data():
-        print(f'({count}) {title} | {start} | ')
+    for (id,title,desc,start,end,type,date) in habits_table:
         count += 1
         habit_names.append(title)
-            
+        display_habits.append([count,title, start])
+    #display the habits
+    headers = ["", "Title", "Duration", "Streak"] # streak data not shown as of yet
+    print(tabulate(display_habits, headers=headers, tablefmt='orgtbl'))
+          
 ##    print('(1) Walking | Duration: 0h:17m | 3')
-##    print('(2) Newspaper | Duration: 1h:17m | 8')
-##    print('(3) Cat feed | Coming up: 7h:3m | 6')
+
     print('\ntype "main" to go back.')
 
     #define input variable
@@ -105,20 +116,11 @@ def current_habits():
         elif i == 'main':
             main()
             break
-        
-        elif i.isalpha():
-            id, title, desc, start_time, end_time, type, date = get_data()[habit_names.index(i)]
-            print('Title:', title.title())
-            print('Description:', desc)
-            print('Start Time:', start_time)
-            print('End TIme:', end_time)
-            print('Habit Type:', type)
-            print('Creation Time:', date)
                 
-        elif i.isdigit():
+        elif i.isdigit() and (int(i)>0) and (int(i)<= len(habits_table)):
             #use try-except to stop program from crashing on incorrect entry
             try:
-                id, title, desc, start_time, end_time, type, date = get_data()[int(i)]
+                id, title, desc, start_time, end_time, type, date = habits_table[int(i)-1]
                 print('Title:', title)
                 print('Description:', desc)
                 print('Start Time:', start_time)
@@ -148,7 +150,8 @@ def add_new_habit():
 
     #define while loop so in case user enters wrong info
     #they can fix it by repeating steps
-    while True:
+    loop = True
+    while loop:
         
         i = input('>> ')                
         if i == 'add':
@@ -169,7 +172,8 @@ def add_new_habit():
             else:
                 
                 #define a check for if user enters values other than expected
-                while True:
+                inner_loop = True
+                while inner_loop:
                     #define confirmation check to let user
                     #recheck if information is entered correctly.
                     confirm = input('Confirm details (y/n)? ')
@@ -179,13 +183,14 @@ def add_new_habit():
 
                         print('\nNew habit added!\nYour new habit is being tracked.')
                         print("\nto go back, type 'main'.")
-                        break
+                        inner_loop = False
+                        loop = False
 
                     #if user enters no then break the loop and start again
                     elif confirm == 'n':
                         input('\npress Enter to start again...')
                         add_new_habit()
-                        break
+                        inner_loop = False
                     
                     elif confirm != 'y' or confirm != 'n':
                         print('\nEnter valid information.\n')
@@ -205,7 +210,7 @@ def add_new_habit():
             break
     
 
-def view_habits():
+def view_all_habits():
     '''Reads habit data from database and displayes
        all habits for the user to see, with their
        respective streaks.'''
@@ -214,8 +219,85 @@ def view_habits():
     cls()
     print('VIEW ALL HABITS:\n')
 
+    habits_table, task_completion_table = get_data()
 
-def progress():
+    #define loop controlling variable
+    count = 0
+
+    #define list to store habits from habits_table
+    display_habits = []
+
+    #define list to store habit names for later use
+    habit_names = []
+    #extract all attributes of a habit
+    #useful for taking the relevant attributes out separately
+    for (id,title,desc,start,end,type,date) in habits_table:
+        count += 1
+        habit_names.append(title)
+        display_habits.append([count,title, start])
+    #display habits
+    headers = ["", "Title", "Duration", "Streak"]
+    print(tabulate(display_habits, headers=headers, tablefmt='orgtbl'))
+
+    print('\n-type \'h\' for help.')
+
+    #define input variable
+    i=''
+    #start loop, check if input is digit. if yes, use it to
+    #retrieve data of habit at the digit position, If digit
+    #out of range, let user know. IF input is character, let
+    #user get help, quit program or goto menu.
+    while True:
+        i = input('>> ')
+        if i == 'h':
+            help('view all habits')
+        elif i == 'q':
+            quit()
+        elif i == 'main':
+            main()
+            break
+        elif i == 'delete':
+            cls()
+            count = 0
+            display_habits = []
+            for (id,title,desc,start,end,type,date) in habits_table:
+                count += 1
+                display_habits.append([count,title])
+            
+            headers = ["", "Title"]
+            print(tabulate(display_habits, headers, tablefmt='orgtbl'))
+            i = input('\ntype habit number to delete habit: ')
+            while i.isdigit() and (int(i) <= len(habit_names)):
+                pass
+
+        
+        elif i.isalpha():
+            #program crashes on wrong/random input
+##            while i in habit_names:
+            id, title, desc, start_time, end_time, type, date = habits_table[habit_names.index(i.title())]
+            print('Title:', title.title())
+            print('Description:', desc)
+            print('Start Time:', start_time)
+            print('End TIme:', end_time)
+            print('Habit Type:', type)
+            print('Creation Time:', date)
+                
+        elif i.isdigit():
+            #use try-except to stop program from crashing on incorrect entry
+            try:
+                id, title, desc, start_time, end_time, type, date = habits_table[int(i)]
+                print('Title:', title)
+                print('Description:', desc)
+                print('Start Time:', start_time)
+                print('End TIme:', end_time)
+                print('Habit Type:', type)
+                print('Creation Time:', date)
+                 
+            except IndexError:
+                print('incorrect entry!')
+
+
+def my_progress():
     '''Provides user with analyses of their habits
        so they can know what they are doing right
        and where they need to focus more.'''
@@ -223,4 +305,3 @@ def progress():
     #clear screen to show sub-menu interface
     cls()
     print('MY PROGRESS:\n')
-    
