@@ -14,7 +14,6 @@ class Habit:
         #self.truncate_time()
         self.add_to_database()
 
-    
 
     def add_to_database(self):
         self.connection = sqlite3.connect('habit_db TEST.db')
@@ -25,14 +24,6 @@ class Habit:
                             )
         self.connection.commit()
         self.connection.close()
-
-    def show_data(self):
-        self.connection = sqlite3.connect('habit_db TEST.db')
-        self.cursor = self.connection.cursor()
-        self.cursor.execute('SELECT * FROM habits;')
-        print(self.cursor.fetchall())
-        self.connection.close()
-        return self.cursor.fetchall()
         
 
     # test function to change init property values
