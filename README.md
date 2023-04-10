@@ -1,4 +1,4 @@
-# Project-Habit-Tracker
+# Project: Habit Tracker Application
 Habit Tracker program for my University course.
 
 Habit Tracker.py is the main file. To run the program execute this file. Best to run it as a CLI because some functionality is not possible in IDLE.
