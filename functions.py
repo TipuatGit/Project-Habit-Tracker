@@ -29,13 +29,14 @@ def help(interface = 'main'):
         print('Enter habit number to see details.')
 
     elif interface == 'add new habit':
-        print("type 'add' to add new habit.")
-        print('You will be prompted to enter: \n- "title" which is the name of your habit.')
+        print("type 'add' to add new habit. You will be prompted to enter:")
+        print('- "type" such as daily, weekly or monthly.\n')
+        print('\n- "title" which is the name of your habit.')
         print('- "description" where you can describe it in detail, you can also leave it empty.')
         print('- "start time" is the time at which your habit completion countdown begins.')
         print('- "end time" where the countdown ends.')
-        print('- "type" such as daily, weekly or monthly.\n')
         print('To cancel habit entry, leave all fields empty.\n')
+        print('\nto go back, type "main"')
 
     elif interface == 'view all habits':
         print('to view details of any habit, enter the habit number listed.')
@@ -224,6 +225,8 @@ def view_all_habits():
     #define loop controlling variable
     count = 0
 
+    confirm = ''
+
     #define list to store habits from habits_table
     display_habits = []
 
@@ -247,7 +250,8 @@ def view_all_habits():
     #retrieve data of habit at the digit position, If digit
     #out of range, let user know. IF input is character, let
     #user get help, quit program or goto menu.
-    while True:
+    loop = True
+    while loop:
         i = input('>> ')
         if i == 'h':
             help('view all habits')
@@ -258,29 +262,33 @@ def view_all_habits():
             break
         elif i == 'delete':
             cls()
+            print('VIEW ALL HABITS:\n')
             count = 0
             display_habits = []
             for (id,title,desc,start,end,type,date) in habits_table:
-                count += 1
-                display_habits.append([count,title])
+                display_habits.append([id,title])
             
-            headers = ["", "Title"]
+            headers = ["ID", "Title"]
             print(tabulate(display_habits, headers, tablefmt='orgtbl'))
-            i = input('\ntype habit number to delete habit: ')
-            while i.isdigit() and (int(i) <= len(habit_names)):
-                pass
 
-        
-        elif i.isalpha():
-            #program crashes on wrong/random input
-##            while i in habit_names:
-            id, title, desc, start_time, end_time, type, date = habits_table[habit_names.index(i.title())]
-            print('Title:', title.title())
-            print('Description:', desc)
-            print('Start Time:', start_time)
-            print('End TIme:', end_time)
-            print('Habit Type:', type)
-            print('Creation Time:', date)
+            
+            i = input('\nenter habit ID to delete a habit: ')
+            confirm = input('are you sure you want to delete this habit (y/n)? ')
+            while i.isdigit() and (int(i) <= len(habit_names)):
+                if confirm == 'y':
+                    connection = sqlite3.connect('habit_db TEST.db')
+                    cursor = connection.cursor()
+                    cursor.execute('DELETE FROM habits WHERE habit_id = {};'.format(i))
+                    connection.commit()
+                    connection.close()
+                    print('Habit deleted successfully.\npress Enter to go back.')
+                    view_all_habits()
+                    loop = False
+                    break
+                elif confirm == 'n':
+                    loop = False
+                    view_all_habits()
+                    break
                 
         elif i.isdigit():
             #use try-except to stop program from crashing on incorrect entry
@@ -305,3 +313,4 @@ def my_progress():
     #clear screen to show sub-menu interface
     cls()
     print('MY PROGRESS:\n')
+    
