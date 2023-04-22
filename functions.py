@@ -260,26 +260,7 @@ def view_all_habits():
 
     confirm = ''
 
-    #define list to store habits from habits_table
-    display_habits = []
-
-    #define list to store habit names for later use
-    habit_names = []
-    #extract all attributes of a habit
-    #useful for taking the relevant attributes out separately
-    for (id,title,desc,start,end,type,date) in habits_table:
-        count += 1
-        habit_names.append(title)
-        display_habits.append([count,title, start])
-
-    streak = get_streak(task_completion_table)
-
-    #append streak data to habits data
-    for row in range(len(display_habits)):
-        display_habits[row].append(sum(streak[row]))
-    #display habits
-    headers = ["", "Title", "Duration", "Streak"]
-    print(tabulate(display_habits, headers=headers, tablefmt='orgtbl'))
+    display_habits(habits_table, task_completion_table)
 
     print('\n-type \'h\' for help.')
 
