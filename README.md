@@ -7,4 +7,4 @@ functions.py file contains various functions that enable the program to work suc
 
 habit_class.py defines the Habit class and contains a few methods.
 
-Right now, work is in progress. Many things are going to be added as well as removed. Basic structure is set but I would say that the program is still in early development stages.
+Currently, the program is in the middle stages of development. Most of the things are set and a few things need to be worked on.
