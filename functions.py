@@ -50,6 +50,66 @@ def help(interface = 'main'):
         print('\nTo go back, type "main"')
 
 
+def check_missed_habits():
+    
+    current_time = datetime.datetime.now()
+
+    habits_table, _ = get_data()
+
+    for (id, title, desc, start, end, type, date) in habits_table:
+        start_time = datetime.datetime.strptime(start, "%H:%M:%S").time()
+        end_time = datetime.datetime.strptime(end, '%H:%M:%S').time()
+
+        if type == 'daily':
+            #if there's time for daily habit then do nothing
+            if (current_time.time() > start_time) and (current_time.time() < end_time):
+                pass
+            
+            #if time has passed then check if entry was made
+            elif (current_time.time() > end_time):
+                connection = sqlite3.connect('habit_db TEST.db')
+                cursor = connection.cursor()
+                query = "SELECT * FROM task_completion WHERE habit_id = ? AND DATE(completion_time) = DATE(?)"
+                cursor.execute(query, (id, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                existing_record = cursor.fetchone()
+
+                #if no entry is found then habit is missed so enter 0
+                if not existing_record:
+                    query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
+                    cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                    connection.commit()
+
+        elif type == 'weekly':
+            #find the last entry in the database
+            connection = sqlite3.connect('habit_db TEST.db')
+            cursor = connection.cursor()
+            cursor.execute("SELECT * FROM task_completion WHERE habit_id = ?", (id,))
+            record = cursor.fetchall()[-1]
+
+            #get days from last entry
+            last_entry = datetime.datetime.strptime(record[2], "%Y-%m-%d %H:%M:%S")
+            days = (current_time - last_entry).days
+
+            #check if 7 days have passed or not
+            if days > 7:
+                query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
+                cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                pass
+            elif days == 7:
+                #if a week is over then check if time is over or not
+                if (current_time.time() > start_time) and (current_time.time() < end_time):
+                    pass
+                elif (current_time.time() > end_time):
+                    #if time is over then enter 0 into database
+                    query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
+                    cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                    pass
+            elif days < 7:
+                pass
+            
+            connection.close()
+
+
 def get_data():
     #define function to retrieve all tables from database
     connection = sqlite3.connect('habit_db TEST.db')
