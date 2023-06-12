@@ -53,75 +53,90 @@ def help(interface = 'main'):
 def check_missed_habits():
     
     current_time = datetime.datetime.now()
-
-    habits_table, _ = get_data()
+    habits_table, task_completion_table = get_data()
+    connection = sqlite3.connect('habit_db TEST.db')
+    cursor = connection.cursor()
 
     for (id, title, desc, start, end, type, date) in habits_table:
         start_time = datetime.datetime.strptime(start, "%H:%M:%S").time()
         end_time = datetime.datetime.strptime(end, '%H:%M:%S').time()
-
+        
+        #if there's time for daily habit then do nothing
         if type == 'daily':
-            print('checking daily')
-            #if there's time for daily habit then do nothing
+            
+            #get all task completions for a habit
+            this_daily_habit = [row for row in task_completion_table if row[0] == id]
+
+            #check how many days passed since last entry was made
+            last_entry = datetime.datetime.strptime(this_daily_habit[-1][-1], "%Y-%m-%d %H:%M:%S")
+            days = (current_time - last_entry).days
+
+            #add missed habits if days > 1
+            if days > 1:
+                for day in range(days):
+                    print(day)
+                    query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
+                    cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                    connection.commit()
+                    connection.close()
+
             if (current_time.time() > start_time) and (current_time.time() < end_time):
-                print('still time')
                 pass
             
             #if time has passed then check if entry was made
             elif (current_time.time() > end_time):
-                connection = sqlite3.connect('habit_db TEST.db')
-                cursor = connection.cursor()
                 query = "SELECT * FROM task_completion WHERE habit_id = ? AND DATE(completion_time) = DATE(?)"
                 cursor.execute(query, (id, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
                 existing_record = cursor.fetchone()
-                print('time greater')
+
                 #if no entry is found then habit is missed so enter 0
                 if not existing_record:
-                    print('no rec')
                     query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
                     cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
                     connection.commit()
-                print('end reached')
 
         elif type == 'weekly':
-            print('checking weeky')
             #find the last entry in the database
-            connection = sqlite3.connect('habit_db TEST.db')
-            cursor = connection.cursor()
-            cursor.execute("SELECT * FROM task_completion WHERE habit_id = ?", (id,))
+            this_weekly_habit = [row for row in task_completion_table if row[0] == id]
 
             try:
-                record = cursor.fetchall()[-1]
-
                 #get days from last entry
-                last_entry = datetime.datetime.strptime(record[2], "%Y-%m-%d %H:%M:%S")
+                last_entry = datetime.datetime.strptime(this_weekly_habit[-1][-1], "%Y-%m-%d %H:%M:%S")
                 days = (current_time - last_entry).days
 
                 #check if 7 days have passed or not
                 if days > 7:
-                    print('>7')
                     query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
                     cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
                     connection.commit()
                     
                 elif days == 7:
-                    print('==7')
+                    
                     #if a week is over then check if time is over or not
                     if (current_time.time() > start_time) and (current_time.time() < end_time):
-                        print('still time for weekly')
+                        pass
+                    
                     elif (current_time.time() > end_time):
                         #if time is over then enter 0 into database
                         query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
                         cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
                         connection.commit()
-                        print('0 inserted')
+                        
                 elif days < 7:
-                    print('<7')
                     pass
                 
-                connection.close()
             except IndexError:
-                pass
+                #this error means habit was created but not even the first task has been completed
+                #resulting in an empty `this_weekly_habit` list
+                #in this case we just check if 7 days passed from the time the habit was first defined
+                #so we can enter 0 in database
+                creation_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+                if (current_time - creation_date).days > 7:
+                    query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
+                    cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                    connection.commit()
+                    
+    connection.close()
 
 
 def get_data():
@@ -174,10 +189,8 @@ def current_habits():
         no_record_exists = True
         for task_id, task, date in task_completion_table:
             if task_id == id and date is not None:
-                print('tsk id n date met') 
                 task_completion_date = datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S').date()
                 if task_completion_date == current_time.date():
-                    print('record exists.')
                     no_record_exists = False
                     
         #if habit completion time has started, and it has no record for the day then display the habit.
@@ -215,7 +228,7 @@ def current_habits():
         elif i == 'main':
             main()
             break
-        elif condition == True:
+        elif condition == True and len(display_habits) != 0:
             id, title, desc, start_time, end_time, type, date = habits_table[int(i)-1]
             print('Title:', title)
             print('Description:', desc)
@@ -349,7 +362,7 @@ def add_new_habit():
 
 
 def view_all_habits():
-    '''Reads habit data from database and displayes
+    '''Reads habit data from database and displays
        all habits for the user to see, with their
        respective streaks.'''
 
