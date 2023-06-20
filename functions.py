@@ -518,11 +518,9 @@ def my_progress():
                     streak[id].append(stat)
                 else:
                     streak.setdefault(id, [stat])
-            print(streak)
-            #for each habit, store all streaks in list, and
-            #store that list in dictionary mapped to habit id
+
             longest_streak = {}
-            for id in range(len(streak)):
+            for id in streak.keys():
                 s = streak[id]
                 longest_streak.setdefault(id, [])
                 longest = 0
@@ -534,14 +532,12 @@ def my_progress():
                         longest = 0
                 if longest >0:
                         longest_streak[id].append(longest)
-                        
-                print(longest_streak)
 
             #prepare data to display
             display_habits = []
-            for item in range(len(habits_table)):
-                if list(longest_streak.keys())[item] == habits_table[item][0]:
-                    display_habits.append([habits_table[item][1],max(longest_streak[item])])
+            for item in habits_table:
+                if item[0] in longest_streak:
+                    display_habits.append([item[1],max(longest_streak[item[0]], default=0)])
             #display the habits
             headers = ["Title", "Max Streak"]
             print(tabulate(display_habits, headers=headers, tablefmt='orgtbl'))
