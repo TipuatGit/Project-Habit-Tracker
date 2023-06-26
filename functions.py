@@ -6,11 +6,12 @@ from tabulate import tabulate
 import re
 
 def cls():
-    '''function that clears the terminal screen.'''
+    '''Function clears the terminal screen.'''
     subprocess.call('cls' if os.name == 'nt' else 'clear', shell=True)
 
 
 def help(interface = 'main'):
+    '''Function provides various help features for the user at different stages in the program.'''
     
     if interface == 'main':
         print('\nWelcome to HABITS TRACKER!\n')
@@ -46,11 +47,13 @@ def help(interface = 'main'):
         print('Here you can view different statistics about your habits.')
         print('Type "daily" to view daily habits.')
         print('Type "weekly" to view weekly habits.')
-        print('Type "streak" to view streak of all habits.')
+        print('Type habit number to view details. Details show \'habit name\' and \'progress\'.')
+        print('Progress shows positive and negative numbers which are habit streak and missed days respectively.')
         input('\npress Enter to close help...')
         my_progress()
 
 def check_missed_habits():
+    '''Function checks for missed habit tasks and enteres missing data into the database.'''
     
     current_time = datetime.datetime.now()
     habits_table, task_completion_table = get_data()
@@ -144,6 +147,8 @@ def check_missed_habits():
 
 
 def get_data():
+    '''Function returns all habit data from the database.'''
+    
     #define function to retrieve all tables from database
     connection = sqlite3.connect('habit_db TEST.db')
     cursor = connection.cursor()
@@ -157,6 +162,7 @@ def get_data():
 
 def main():
     '''Function prints the main interface of the program.'''
+    
     cls()
     print("HABITS TRACKER!\n")
     print('(1) Current Habits')
@@ -165,6 +171,8 @@ def main():
 
 
 def current_habits():
+    '''Function displays currently active habits on screen for user to complete.
+    Habits dissappear after their set time is over.'''
     
     #clear screen to show sub-menu interface
     cls()
@@ -272,11 +280,8 @@ def current_habits():
 
 
 def add_new_habit():
-    '''add_new_habit is a function that adds new habit
-       and stores it in the database.
-
-       It prompts the user to enter 6 inputs; type, title,
-        description, start time and end time,.'''
+    '''Function adds new habit to the program and stores it in the database.
+       It prompts the user to enter 5 inputs; type, title, description, start time and end time.'''
 
     #clear screen to show sub-menu interface
     cls()
@@ -368,9 +373,8 @@ def add_new_habit():
 
 
 def view_all_habits():
-    '''Reads habit data from database and displays
-       all habits for the user to see, with their
-       respective streaks.'''
+    '''Function reads habit data from database and displays all habits for the user to see,
+        with their respective streaks.'''
 
     #clear screen to show sub-menu interface
     cls()
@@ -478,9 +482,8 @@ def view_all_habits():
 
 
 def my_progress():
-    '''Provides user with analyses of their habits
-       so they can know what they are doing right
-       and where they need to focus more.'''
+    '''Function provides user with analyses of their habits so they can know what they are doing right
+       and on which habits they need to focus more.'''
 
     #clear screen to show sub-menu interface
     cls()
@@ -495,9 +498,60 @@ def my_progress():
         if id in streak.keys():
             streak[id].append(stat)
         else:
-            streak.setdefault(id, [stat]) 
-    
-    while True:
+            streak.setdefault(id, [stat])
+
+    #define function to calculate habit streaks and missed tasks
+    def habit_analysis(i):
+        habits = [] #define list to store habits
+        count = 0 #define variable to make index for habits in table
+        index_to_id = {} #define dict to convert between habit id and display index
+        longest_streak = {} # store all streaks of a habit
+
+        #add habits to the list
+        for row in habits_table:
+            if row[5] == i:
+                count += 1
+                index_to_id.setdefault(count, row[0])
+                tasks = sum(streak[row[0]])
+                total_tasks = len(streak[row[0]])
+                habits.append([count, row[1], str(tasks) + '/' + str(total_tasks)])
+
+        #calculate all streaks for each habit, includes both streaks and missed days
+        for id in index_to_id:
+            longest_streak.setdefault(index_to_id[id], [])
+            ones_sum = 0
+            zeros_sum = 0
+            for task_count in streak[index_to_id[id]]:
+                if task_count == 1:
+                    ones_sum += 1
+                elif ones_sum >0:
+                    longest_streak[index_to_id[id]].append(ones_sum)
+                    ones_sum = 0
+
+                if task_count == 0:
+                    zeros_sum += 1
+                elif zeros_sum > 0:
+                    longest_streak[index_to_id[id]].append(-zeros_sum)
+                    zeros_sum = 0
+
+            if ones_sum > 0:
+                longest_streak[index_to_id[id]].append(ones_sum)
+            if zeros_sum > 0:
+                longest_streak[index_to_id[id]].append(-zeros_sum)
+
+        #add streaks to habits list
+        for row in habits:
+            max_streak = max(longest_streak[index_to_id[row[0]]], default=0)
+            row.append(max_streak) if max_streak > 0 else row.append(0)
+
+        #display the habits in table
+        print(tabulate(habits, headers=['', 'Daily Habits', 'Tasks Completed', 'Max Streak'], tablefmt='orgtbl'))
+
+        return habits, longest_streak, index_to_id
+
+
+    main_loop = True
+    while main_loop:
         i = input('>> ')
 
         if i == 'h':
@@ -508,108 +562,35 @@ def my_progress():
             main()
             break
 
-        elif i == 'daily':
-            daily_habits = [] #define list to store daily habits
-            daily_count = 0 #define variable to make index for daily habits in table
-            index_to_id = {} #define dict to convert between habit id and display index
-            longest_streak = {} # store all streaks of a habit
-            for row in habits_table:
-                if row[5] == 'daily':
-                    daily_count += 1
-                    index_to_id.setdefault(daily_count, row[0])
-                    tasks = sum(streak[row[0]])
-                    total_tasks = len(streak[row[0]])
-                    daily_habits.append([daily_count, row[1], str(tasks) + '/' + str(total_tasks)])
+        elif i == 'daily' or i == 'weekly':
 
-            for id in index_to_id:
-                longest_streak.setdefault(index_to_id[id], [])
-                ones_sum = 0
-                zeros_sum = 0
-                for task_count in streak[index_to_id[id]]:
-                    if task_count == 1:
-                        ones_sum += 1
-                    elif ones_sum >0:
-                        longest_streak[index_to_id[id]].append(ones_sum)
-                        ones_sum = 0
-
-                    if task_count == 0:
-                        zeros_sum += 1
-                    elif zeros_sum > 0:
-                        longest_streak[index_to_id[id]].append(-zeros_sum)
-                        zeros_sum = 0
-
-                if ones_sum > 0:
-                    longest_streak[index_to_id[id]].append(ones_sum)
-                if zeros_sum > 0:
-                    longest_streak[index_to_id[id]].append(-zeros_sum)
-                ##daily_habits[x].append(max(longest_streak[row[0]], default=0))
-                
-            print(tabulate(daily_habits, headers=['', 'Daily Habits', 'Tasks Completed', 'Max Streak'], tablefmt='orgtbl')) 
-
-            while True:
+            habits, longest_streak, index_to_id = habit_analysis(i)
+            
+            #take user input for viewing habit details and other functions
+            inner_loop = True
+            while inner_loop:
                 i = input('\n>> ')
-                condition = i.isdigit() and (int(i)>0) and (int(i)<= len(daily_habits))
+                condition = i.isdigit() and (int(i)>0) and (int(i)<= len(habits))
 
-                if i == '':
-                    my_progress()
-                    break
-                elif i == 'h':
+                if i == 'h':
                     help('my progress')
                 elif i == 'main':
                     main()
-                    break
+                    inner_loop = False
+                    main_loop = False
                 elif i == 'q':
                     quit()
                 elif condition:
-                    index, title, tasks = daily_habits[int(i)-1]
+                    index, title, tasks, streak = habits[int(i)-1]
                     print('Habit: ' + title)
                     print('Performance: ', longest_streak[index_to_id[int(i)]])
-
-        elif i == 'weekly':
-##            for item in habits_table:
-##                if item[5] == 'weekly':
-##                    print(item[1])
-
-            weekly_habits = []
-            weekly_count = 0
-            index_to_id = {} #define dict to convert between habit id and display index
-            for row in habits_table:
-                if row[5] == 'weekly':
-                    weekly_count += 1
-                    index_to_id.setdefault(weekly_count, row[0])
-                    weekly_habits.append([weekly_count, row[1]])
-            print(tabulate(weekly_habits, headers=['', 'Weekly Habits'], tablefmt='orgtbl'))
-
-        elif i == 'streak':
-            #get streak data from task_completion table in database
-            streak = {}
-            for id, stat, time in task_completion_table:
-                if id in streak.keys():
-                    streak[id].append(stat)
-                else:
-                    streak.setdefault(id, [stat])
-
-            longest_streak = {}
-            for id in streak.keys():
-                longest_streak.setdefault(id, [])
-                longest = 0
-                for task_count in streak[id]:
-                    if task_count == 1:
-                        longest += task_count
-                    elif longest >0:
-                        longest_streak[id].append(longest)
-                        longest = 0
-                if longest >0:
-                        longest_streak[id].append(longest)
-            print(longest_streak)
-            #prepare data to display
-            display_habits = []
-            for row in habits_table:
-                if row[0] in longest_streak:
-                    display_habits.append([row[1],index_to_id[id]])
-            #display the habits
-            headers = ["Title", "Max Streak"]
-            print(tabulate(display_habits, headers=headers, tablefmt='orgtbl'))
+                elif i == 'back':
+                    inner_loop = False
+                    main_loop = False
+                    my_progress()
+                elif i not in ['h', 'main', 'q', 'back', condition]:
+                    my_progress()
+                    break
 
         #user enters anything else, start again.
         elif i not in ['h', 'q', 'main', 'daily', 'weekly']:
