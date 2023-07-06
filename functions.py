@@ -9,6 +9,38 @@ def cls():
     '''Function clears the terminal screen.'''
     subprocess.call('cls' if os.name == 'nt' else 'clear', shell=True)
 
+def check_database():
+    '''Function checks if database exists. If it does not then creates one.'''
+
+    #create database variable and get path of database
+    db = 'habit_db.db'
+    database_path = os.path.join(os.getcwd(), db)
+
+    #create databse if it doesnt exist
+    if not os.path.exists(database_path):
+        connection = sqlite3.connect(database_path)
+        cursor = connection.cursor()
+
+        #create "habits" table
+        cursor.execute('''CREATE TABLE habits (
+            habit_id      INTEGER       PRIMARY KEY AUTOINCREMENT,
+            title         VARCHAR (30)  NOT NULL,
+            description   VARCHAR (100),
+            time_start    TIME          NOT NULL,
+            time_end      TIME          NOT NULL,
+            habit_type    VARCHAR (9)   NOT NULL,
+            creation_time DATETIME      NOT NULL
+        )''')
+
+        #create "task_completion" table
+        cursor.execute('''CREATE TABLE task_completion (
+            habit_id          INTEGER  REFERENCES habits (habit_id) ON DELETE CASCADE
+                                       NOT NULL,
+            completion_status BOOLEAN  NOT NULL,
+            completion_time   DATETIME
+        )''')
+        connection.close()
+
 
 def help(interface = 'main'):
     '''Function provides various help features for the user at different stages in the program.'''
@@ -49,11 +81,12 @@ def help(interface = 'main'):
         print('Type "weekly" to view weekly habits.')
         print('Type habit number to view details. Details show \'habit name\' and \'progress\'.')
         print('Progress shows positive and negative numbers which are habit streak and missed days respectively.')
+        print('Type \'back\' to go back to My Progress menu from a sub-menu')
         input('\npress Enter to close help...')
         my_progress()
 
 def check_missed_habits():
-    '''Function checks for missed habit tasks and enteres missing data into the database.'''
+    '''Function checks for missed habit tasks and enters missing data into the database.'''
     
     current_time = datetime.datetime.now()
     habits_table, task_completion_table = get_data()
@@ -230,7 +263,7 @@ def current_habits():
     i=''
     #start loop, check if input is digit. if yes, use it to
     #retrieve data of habit at the digit position, If digit
-    #out of range, let user know. IF input is character, let
+    #out of range, let user know. IF input is alpha, let
     #user get help, quit program or goto menu.
     while True:
         i = input('>> ')
@@ -388,6 +421,7 @@ def view_all_habits():
     
     #extract all attributes of a habit
     #useful for taking the relevant attributes out separately
+    #populate display_habits and index_to_id with relevant data
     for (id,title,desc,start,end,type,date) in habits_table:
         count += 1
         index_to_id.setdefault(count, id)
@@ -402,12 +436,12 @@ def view_all_habits():
             streak.setdefault(id, [stat])
 
     #append streak data to habits data
-    for row in range(len(display_habits)):
-        try:
-            display_habits[row].append(sum(streak[row]))
-        except KeyError:
+    for row in display_habits:
+        if row[0] in index_to_id.keys() and sum(streak.get(index_to_id[row[0]],[])) != 0:
+            row.append(sum(streak[index_to_id[row[0]]]))
+        else:
             #in case habit task has not yet started, streak wont exist.
-            display_habits[row].append('-')
+            row.append('-')
     
     #display the habits
     headers = ["", "Title", 'Type', "Streak"]
@@ -501,7 +535,7 @@ def my_progress():
             streak.setdefault(id, [stat])
 
     #define function to calculate habit streaks and missed tasks
-    def habit_analysis(i):
+    def habit_analysis(user_input):
         habits = [] #define list to store habits
         count = 0 #define variable to make index for habits in table
         index_to_id = {} #define dict to convert between habit id and display index
@@ -509,11 +543,11 @@ def my_progress():
 
         #add habits to the list
         for row in habits_table:
-            if row[5] == i:
+            if row[5] == user_input:
                 count += 1
                 index_to_id.setdefault(count, row[0])
-                tasks = sum(streak[row[0]])
-                total_tasks = len(streak[row[0]])
+                tasks = sum(streak.get(row[0],[]))
+                total_tasks = len(streak.get(row[0],[]))
                 habits.append([count, row[1], str(tasks) + '/' + str(total_tasks)])
 
         #calculate all streaks for each habit, includes both streaks and missed days
@@ -564,8 +598,16 @@ def my_progress():
 
         elif i == 'daily' or i == 'weekly':
 
+            cls() #clear screen to display sub-menu
+
+            #display menu title on screen
+            if i == 'daily':
+                print('DAILY HABITS:')
+            elif i == 'weekly':
+                print('WEEKLY HABITS')
+
             habits, longest_streak, index_to_id = habit_analysis(i)
-            
+
             #take user input for viewing habit details and other functions
             inner_loop = True
             while inner_loop:
