@@ -1,8 +1,12 @@
 from functions import *
 
+#check if database exists already
+check_database()
 
+#run the main interface of the program
 main()
 
+#enter the top-level loop of the program
 while True:
     check_missed_habits()
         
@@ -24,3 +28,6 @@ while True:
         
     elif user=='4':
         my_progress()
+
+    elif user not in ['h', 'q', '1', '2', '3', '4']:
+        main()
