@@ -90,7 +90,7 @@ def check_missed_habits():
     
     current_time = datetime.datetime.now()
     habits_table, task_completion_table = get_data()
-    connection = sqlite3.connect('habit_db TEST.db')
+    connection = sqlite3.connect('habit_db.db')
     cursor = connection.cursor()
 
     for (id, title, desc, start, end, type, date) in habits_table:
@@ -107,11 +107,11 @@ def check_missed_habits():
                 #check how many days passed since last entry was made
                 last_entry = datetime.datetime.strptime(this_daily_habit[-1][-1], "%Y-%m-%d %H:%M:%S")
                 days = (current_time - last_entry).days
-
+                
                 #add missed habits if days > 1
                 if days > 1:
                     for day in range(days):
-                        print(day)
+                        
                         query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
                         cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
                         connection.commit()
@@ -130,26 +130,38 @@ def check_missed_habits():
                         query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
                         cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
                         connection.commit()
+                        
             except IndexError:
                 #this error means habit was created but not even the first task has been completed
                 #resulting in an empty `this_daily_habit` list
-                pass
+                #in this case we just check if more than 1 days passed from the time the habit was first defined
+                #so we can enter 0 in database
+                creation_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+                num_days = (current_time - creation_date).days
+                if num_days > 1:
+                    for x in range(num_days):
+                        query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
+                        cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                        connection.commit()
 
         elif type == 'weekly':
             #find the last entry in the database
             this_weekly_habit = [row for row in task_completion_table if row[0] == id]
-
+            
             try:
                 #get days from last entry
                 last_entry = datetime.datetime.strptime(this_weekly_habit[-1][-1], "%Y-%m-%d %H:%M:%S")
                 days = (current_time - last_entry).days
-
+                
                 #check if 7 days have passed or not
                 if days > 7:
-                    query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
-                    cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-                    connection.commit()
-                    
+                    #enter 0 into database for the number of weeks calculated
+                    weeks = days//7
+                    for x in range(weeks):
+                        query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
+                        cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                        connection.commit()
+                        
                 elif days == 7:
                     
                     #if a week is over then check if time is over or not
@@ -171,10 +183,13 @@ def check_missed_habits():
                 #in this case we just check if 7 days passed from the time the habit was first defined
                 #so we can enter 0 in database
                 creation_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-                if (current_time - creation_date).days > 7:
-                    query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
-                    cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-                    connection.commit()
+                num_days = (current_time - creation_date).days
+                if num_days > 7:
+                    weeks = num_days // 7
+                    for x in range(weeks):
+                        query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
+                        cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                        connection.commit()
                     
     connection.close()
 
@@ -183,7 +198,7 @@ def get_data():
     '''Function returns all habit data from the database.'''
     
     #define function to retrieve all tables from database
-    connection = sqlite3.connect('habit_db TEST.db')
+    connection = sqlite3.connect('habit_db.db')
     cursor = connection.cursor()
     cursor.execute('SELECT * FROM habits;')
     habits_table = cursor.fetchall()
@@ -292,13 +307,13 @@ def current_habits():
                 #take habit number, insert data into database 
                 habit = input('Enter habit number to complete task: ')
                 if habit.isdigit() and (int(habit)>0) and (int(habit)<= len(habits_table)):
-                    connection = sqlite3.connect('habit_db TEST.db')
+                    connection = sqlite3.connect('habit_db.db')
                     cursor = connection.cursor()
                     query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
                     cursor.execute(query, (index_to_id[int(habit)], 1, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
                     connection.commit()
                     connection.close()
-                    input('Task completed!\n\npress Enter to continue.') # INCORRECT HABITS COMPLETED. FIX ERROR    
+                    input('Task completed!\n\npress Enter to continue.')  
                     current_habits()
                     break
                 else:
@@ -314,7 +329,7 @@ def current_habits():
 
 def add_new_habit():
     '''Function adds new habit to the program and stores it in the database.
-       It prompts the user to enter 5 inputs; type, title, description, start time and end time.'''
+       It prompts the user to enter 5 inputs: type, title, description, start time and end time.'''
 
     #clear screen to show sub-menu interface
     cls()
@@ -376,6 +391,7 @@ def add_new_habit():
                     confirm = input('Confirm details (y/n)? ')
                         
                     if confirm == 'y':
+                        # call object from habit_class.py
                         Habit(title, description, start_time, end_time, type)
 
                         print('\nNew habit added!\nYour new habit is being tracked.')
@@ -479,7 +495,7 @@ def view_all_habits():
 
             confirm = input('Are you sure you want to delete this habit (y/n)? ')
             if confirm == 'y':
-                connection = sqlite3.connect('habit_db TEST.db')
+                connection = sqlite3.connect('habit_db.db')
                 cursor = connection.cursor()
                 cursor.execute('DELETE FROM habits WHERE habit_id=?;', (index_to_id[int(i)],))
                 cursor.execute('DELETE FROM task_completion WHERE habit_id=?;', (index_to_id[int(i)],))
@@ -534,27 +550,84 @@ def my_progress():
         else:
             streak.setdefault(id, [stat])
 
-    #define function to calculate habit streaks and missed tasks
-    def habit_analysis(user_input):
-        habits = [] #define list to store habits
-        count = 0 #define variable to make index for habits in table
-        index_to_id = {} #define dict to convert between habit id and display index
-        longest_streak = {} # store all streaks of a habit
+    main_loop = True
+    while main_loop:
+        i = input('>> ')
 
-        #add habits to the list
-        for row in habits_table:
-            if row[5] == user_input:
-                count += 1
-                index_to_id.setdefault(count, row[0])
-                tasks = sum(streak.get(row[0],[]))
-                total_tasks = len(streak.get(row[0],[]))
-                habits.append([count, row[1], str(tasks) + '/' + str(total_tasks)])
+        if i == 'h':
+            main_loop = False
+            help('my progress')
+        elif i == 'q':
+            quit()
+        elif i == 'main':
+            main()
+            break
 
-        #calculate all streaks for each habit, includes both streaks and missed days
-        for id in index_to_id:
-            longest_streak.setdefault(index_to_id[id], [])
-            ones_sum = 0
-            zeros_sum = 0
+        elif i == 'daily' or i == 'weekly':
+
+            cls() #clear screen to display sub-menu
+
+            #display menu title on screen
+            if i == 'daily':
+                print('DAILY HABITS:\n')
+            elif i == 'weekly':
+                print('WEEKLY HABITS:\n')
+
+            habits, longest_streak, index_to_id = habit_analysis(i, habits_table, streak)
+
+            #take user input for viewing habit details and other functions
+            inner_loop = True
+            while inner_loop:
+                i = input('\n>> ')
+                condition = i.isdigit() and (int(i)>0) and (int(i)<= len(habits))
+
+                if i == 'h':
+                    help('my progress')
+                elif i == 'q':
+                    quit()
+                elif condition:
+                    index, title, tasks, streak = habits[int(i)-1]
+                    print('Habit: ' + title)
+                    print('Performance: ', longest_streak[index_to_id[int(i)]])
+                elif i == 'back':
+                    inner_loop = False
+                    main_loop = False
+                    my_progress()
+                elif i not in ['h', 'q', 'back', condition]:
+                    inner_loop = False
+                    main_loop = False
+                    my_progress()
+                      
+
+        #user enters anything else, start again.
+        elif i not in ['h', 'q', 'main', 'daily', 'weekly']:
+            my_progress()
+            break
+
+#define function to calculate habit streaks and missed tasks
+def habit_analysis(user_input, habits_table, streak):
+    habits = [] #define list to store habits
+    count = 0 #define variable to make index for habits in table
+    index_to_id = {} #define dict to convert between habit id and display index
+    longest_streak = {} # store all streaks of a habit
+
+    #add habits to the list
+    for row in habits_table:
+        
+        if row[5] == user_input:
+            count += 1
+            index_to_id.setdefault(count, row[0])
+            tasks = sum(streak.get(row[0],[]))
+            total_tasks = len(streak.get(row[0],[]))
+            habits.append([count, row[1], str(tasks) + '/' + str(total_tasks)])
+    
+    #calculate all streaks for each habit, includes both streaks and missed days
+    for id in index_to_id:
+        longest_streak.setdefault(index_to_id[id], [])
+        ones_sum = 0
+        zeros_sum = 0
+
+        try:
             for task_count in streak[index_to_id[id]]:
                 if task_count == 1:
                     ones_sum += 1
@@ -573,68 +646,15 @@ def my_progress():
             if zeros_sum > 0:
                 longest_streak[index_to_id[id]].append(-zeros_sum)
 
-        #add streaks to habits list
-        for row in habits:
-            max_streak = max(longest_streak[index_to_id[row[0]]], default=0)
-            row.append(max_streak) if max_streak > 0 else row.append(0)
+        except KeyError:
+            continue
 
-        #display the habits in table
-        print(tabulate(habits, headers=['', 'Daily Habits', 'Tasks Completed', 'Max Streak'], tablefmt='orgtbl'))
+    #add streaks to habits list
+    for row in habits:
+        max_streak = max(longest_streak[index_to_id[row[0]]], default=0)
+        row.append(max_streak) if max_streak > 0 else row.append(0)
 
-        return habits, longest_streak, index_to_id
+    #display the habits in table
+    print(tabulate(habits, headers=['', 'Daily Habits', 'Tasks Completed', 'Max Streak'], tablefmt='orgtbl'))
 
-
-    main_loop = True
-    while main_loop:
-        i = input('>> ')
-
-        if i == 'h':
-            help('my progress')
-        elif i == 'q':
-            quit()
-        elif i == 'main':
-            main()
-            break
-
-        elif i == 'daily' or i == 'weekly':
-
-            cls() #clear screen to display sub-menu
-
-            #display menu title on screen
-            if i == 'daily':
-                print('DAILY HABITS:')
-            elif i == 'weekly':
-                print('WEEKLY HABITS')
-
-            habits, longest_streak, index_to_id = habit_analysis(i)
-
-            #take user input for viewing habit details and other functions
-            inner_loop = True
-            while inner_loop:
-                i = input('\n>> ')
-                condition = i.isdigit() and (int(i)>0) and (int(i)<= len(habits))
-
-                if i == 'h':
-                    help('my progress')
-                elif i == 'main':
-                    main()
-                    inner_loop = False
-                    main_loop = False
-                elif i == 'q':
-                    quit()
-                elif condition:
-                    index, title, tasks, streak = habits[int(i)-1]
-                    print('Habit: ' + title)
-                    print('Performance: ', longest_streak[index_to_id[int(i)]])
-                elif i == 'back':
-                    inner_loop = False
-                    main_loop = False
-                    my_progress()
-                elif i not in ['h', 'main', 'q', 'back', condition]:
-                    my_progress()
-                    break
-
-        #user enters anything else, start again.
-        elif i not in ['h', 'q', 'main', 'daily', 'weekly']:
-            my_progress()
-            break
+    return habits, longest_streak, index_to_id
