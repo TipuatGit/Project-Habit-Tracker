@@ -17,8 +17,22 @@ This is the main file that runs the program. Best to run it as a CLI because som
 python -r requirements.txt
 ```
 
-Currently, the program is in the middle stages of development. Most of the things are set and a few things need to be worked on.
+The program is complete and fully developed.
 
 ## Tests
 
-blabla
+To test the program, you need to install ```pytest``` then follow these exact steps:
+1) open ```command-prompt``` in the directory of the program and type:
+```shell
+pytest test_program.py -s
+```
+
+2) press Enter
+3) type ```main``` and press Enter
+4) repeat step 3 three more times
+
+Users can use the program during testing like normal too, go around and select different options or give wrong inputs to see if there is any change. Following these steps above is just faster.
+
+The ```-s``` handle is reqired because the input cannot be docked and so must be entered manually by users, the handle allows for that otherwise the testing fails.
+
+   
