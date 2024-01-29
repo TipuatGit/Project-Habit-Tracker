@@ -10,12 +10,9 @@ class Habit:
         self.habit_type = habit_type
         self.creation_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        #automatically call methods as soon as class object is created.
-        self.add_to_database()
-
 
     def add_to_database(self):
-        self.connection = sqlite3.connect('habit_db TEST.db')
+        self.connection = sqlite3.connect('habit_db.db')
         self.cursor = self.connection.cursor()
         self.cursor.execute(f"INSERT INTO habits VALUES (?, ?, ?, ?, ?, ?, ?)",
                             (None, self.title, self.description, self.time_start,

@@ -1,33 +1,38 @@
-from functions import *
+from functions import Functions
+
+
+#instantiate functions class to properly run the program
+#and use all its features
+programm = Functions()
 
 #check if database exists already
-check_database()
+programm.check_database()
 
 #run the main interface of the program
-main()
+programm.main()
 
 #enter the top-level loop of the program
 while True:
-    check_missed_habits()
+    programm.check_missed_habits()
         
     user = input('>> ')
     if user=='h':
-        help()
+        programm.help()
         
     elif user=='q':
         quit()
         
     elif user=='1':
-        current_habits()
+        programm.current_habits()
                 
     elif user=='2':
-        add_new_habit()
+        programm.add_new_habit()
         
     elif user=='3':
-        view_all_habits()
+        programm.view_all_habits()
         
     elif user=='4':
-        my_progress()
+        programm.my_progress()
 
     elif user not in ['h', 'q', '1', '2', '3', '4']:
-        main()
+        programm.main()
