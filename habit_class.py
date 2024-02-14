@@ -18,5 +18,11 @@ class Habit:
                             (None, self.title, self.description, self.time_start,
                              self.time_end, self.habit_type, self.creation_time)
                             )
+
+
+    def make_commit(self):
         self.connection.commit()
+
+
+    def close_database(self):    
         self.connection.close()

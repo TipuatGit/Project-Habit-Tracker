@@ -154,11 +154,16 @@ class Functions:
                 except IndexError:
                     #this error means habit was created but not even the first task has been completed
                     #resulting in an empty `this_daily_habit` list
-                    #in this case we just check if more than 1 days passed from the time the habit was first defined
+                    #in this case we check if time to complete task has passed or not
+                    #and whether more than 1 days passed from the time the habit was first defined
                     #so we can enter 0 in database
                     creation_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
                     num_days = (current_time - creation_date).days
-                    if num_days > 1:
+                    if num_days <= 1:
+                        query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
+                        cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                        connection.commit()
+                    elif num_days > 1:
                         for x in range(num_days):
                             query = "INSERT INTO task_completion (habit_id, completion_status, completion_time) VALUES (?,?,?)"
                             cursor.execute(query, (id, 0, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
@@ -291,8 +296,8 @@ class Functions:
         #display the habits
         headers = ["", "Title", "Time Left"]
         print(tabulate(display_habits, headers=headers, tablefmt='orgtbl'))
-
-        print("\nType 'h' for help.")
+        
+        print("\nType 'complete' to complete task\nType'h' for help.")
 
         #define input variable
         i=''
@@ -358,7 +363,7 @@ class Functions:
         confirm = ''
         
         print('ADD NEW HABIT:\n')
-        print('Type \'h\' to see help.\n')
+        print('Type \'add\' to add new habit.\nType \'h\' to see help.\n')
 
         #define while loop so in case user enters wrong info
         #they can fix it by repeating steps
@@ -414,6 +419,8 @@ class Functions:
                             # instantiate object from habit_class.py
                             new_habit = Habit(title, description, start_time, end_time, type)
                             new_habit.add_to_database()
+                            new_habit.make_commit()
+                            new_habit.close_database()
 
                             print('\nNew habit added!\nYour new habit is being tracked.')
                             print("\nTo go back, type 'main'.")
@@ -483,7 +490,7 @@ class Functions:
         #display the habits
         headers = ["", "Title", 'Type', "Streak"]
         print(tabulate(display_habits, headers=headers, tablefmt='orgtbl'))
-        print('\nType \'h\' for help.')
+        print('\nType \'delete\' to delete habit.\nType \'h\' for help.')
 
         #define input variable
         i=''
@@ -559,7 +566,7 @@ class Functions:
         #clear screen to show sub-menu interface
         self.cls()
         print('MY PROGRESS:\n')
-        print('Type \'h\' for help.')
+        print('Type \'daily\' or \'weekly\' to view daily or weekly habits.\nType \'h\' for help.')
 
         habits_table, task_completion_table = self.get_data()
 
