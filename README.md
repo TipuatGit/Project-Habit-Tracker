@@ -11,6 +11,10 @@ This is the main file that runs the program. Best to run it as a CLI because som
 
 ```habit_class.py``` defines the Habit class and contains a few methods.
 
+```analysis_module.py``` contains function to analyze habit streaks.
+
+```test_program.py``` is used to test various functions of the program.
+
 ## Installation
 
 ```shell
@@ -23,7 +27,7 @@ The program is complete and fully developed.
 
 To test the program, you need to install ```pytest``` then in the project folder, run the following:
 ```shell
-pytest 
+pytest test_program.py
 ```
 
 
