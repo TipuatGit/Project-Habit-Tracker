@@ -21,18 +21,10 @@ The program is complete and fully developed.
 
 ## Tests
 
-To test the program, you need to install ```pytest``` then follow these exact steps:
-1) open ```command-prompt``` in the directory of the program and type:
+To test the program, you need to install ```pytest``` then in the project folder, run the following:
 ```shell
-pytest test_program.py -s
+pytest 
 ```
 
-2) press Enter
-3) type ```main``` and press Enter
-4) repeat step 3 three more times
-
-Users can use the program during testing like normal too, go around and select different options or give wrong inputs to see if there is any change. Following these steps above is just faster.
-
-The ```-s``` handle is reqired because the input cannot be docked and so must be entered manually by users, the handle allows for that otherwise the testing fails.
 
    
